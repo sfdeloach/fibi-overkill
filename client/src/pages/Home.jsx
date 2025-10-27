@@ -1,31 +1,62 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function Home() {
   const [index, setIndex] = useState("0");
+  const [indexes, setIndexes] = useState([]);
+  const [values, setValues] = useState([]);
 
-  const dummyPostgresData = [
-    { index: 7, date: "2024-01-01T12:00:00Z" },
-    { index: 8, date: "2024-01-02T12:00:00Z" },
-    { index: 9, date: "2024-01-03T12:00:00Z" },
-    { index: 10, date: "2024-01-04T12:00:00Z" },
-  ];
-
-  const dummyRedisData = [
-    { key: 7, value: 13 },
-    { key: 8, value: 21 },
-    { key: 9, value: 34 },
-    { key: 10, value: 55 },
-  ];
+  useEffect(() => {
+    let ignore = false;
+    async function fetchData() {
+      const resIndexes = await fetch("/api/indexes");
+      const dataIndexes = await resIndexes.json();
+      const resValues = await fetch("/api/values");
+      const dataValues = await resValues.json();
+      if (!ignore) {
+        setIndexes(dataIndexes);
+        setValues(dataValues);
+      }
+    }
+    fetchData();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   function handleChange(event) {
     setIndex(event.target.value);
   }
 
-  function handleSubmit(event) {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    console.log("Submitted index:", index);
-    // TODO: Handle form submission logic here
-  }
+
+    try {
+      const res = await fetch("/api/index", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ index: parseInt(index) }),
+      });
+
+      const result = await res.text();
+
+      if (res.ok) {
+        setIndex("");
+        // Refresh the indexes and values after submission
+        const resIndexes = await fetch("/api/indexes");
+        const dataIndexes = await resIndexes.json();
+        setIndexes(dataIndexes);
+        const resValues = await fetch("/api/values");
+        const dataValues = await resValues.json();
+        setValues(dataValues);
+      } else {
+        console.error("Failed to submit index");
+      }
+    } catch (error) {
+      console.error("Error submitting index:", error);
+    }
+  };
 
   return (
     <div className="content">
@@ -39,6 +70,7 @@ function Home() {
         <input
           type="number"
           name="index"
+          id="index"
           min={0}
           max={50}
           value={index}
@@ -50,7 +82,7 @@ function Home() {
         <h2>Index History</h2>
         <h3>PostgreSQL Data</h3>
         <ul>
-          {dummyPostgresData.map((item) => (
+          {indexes.map((item) => (
             <li key={item.index}>
               Index {item.index} submitted on{" "}
               {new Date(item.date).toLocaleString()}
@@ -62,7 +94,7 @@ function Home() {
         <h2>Calculated Values</h2>
         <h3>Redis Data</h3>
         <ul>
-          {dummyRedisData.map((item) => (
+          {values.map((item) => (
             <li key={item.key}>
               For index {item.key}, calculated value is {item.value}
             </li>
