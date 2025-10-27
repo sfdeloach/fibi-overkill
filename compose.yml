@@ -1,0 +1,11 @@
+services:
+  client:
+    image: sfdeloach/fibi-overkill-react-server:0.0.0
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+    ports:
+      - "5173:5173"
