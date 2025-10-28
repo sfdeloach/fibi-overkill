@@ -30,31 +30,36 @@ function Home() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    try {
-      const res = await fetch("/api/index", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ index: parseInt(index) }),
-      });
+    if (index !== "") {
+      try {
+        const res = await fetch("/api/index", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ index: parseInt(index) }),
+        });
 
-      const result = await res.text();
+        const result = await res.text();
 
-      if (res.ok) {
-        setIndex("");
-        // Refresh the indexes and values after submission
-        const resIndexes = await fetch("/api/indexes");
-        const dataIndexes = await resIndexes.json();
-        setIndexes(dataIndexes);
-        const resValues = await fetch("/api/values");
-        const dataValues = await resValues.json();
-        setValues(dataValues);
-      } else {
-        console.error("Failed to submit index");
+        if (res.ok) {
+          setIndex("0");
+          // Refresh the indexes and values after submission
+          const resIndexes = await fetch("/api/indexes");
+          const dataIndexes = await resIndexes.json();
+          setIndexes(dataIndexes);
+          const resValues = await fetch("/api/values");
+          const dataValues = await resValues.json();
+          setValues(dataValues);
+        } else {
+          console.error("Failed to submit index");
+        }
+      } catch (error) {
+        console.error("Error submitting index:", error);
       }
-    } catch (error) {
-      console.error("Error submitting index:", error);
+    } else {
+      console.error("Index cannot be empty");
+      setIndex("0");
     }
   };
 
@@ -79,18 +84,6 @@ function Home() {
         <button type="submit">Submit</button>
       </form>
       <div className="box">
-        <h2>Index History</h2>
-        <h3>PostgreSQL Data</h3>
-        <ul>
-          {indexes.map((item) => (
-            <li key={item.index}>
-              Index {item.index} submitted on{" "}
-              {new Date(item.date).toLocaleString()}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="box">
         <h2>Calculated Values</h2>
         <h3>Redis Data</h3>
         <ul>
@@ -100,6 +93,28 @@ function Home() {
             </li>
           ))}
         </ul>
+      </div>
+      <div className="box">
+        <h2>Index History</h2>
+        <h3>PostgreSQL Data</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Index</th>
+              <th>Date Submitted</th>
+            </tr>
+          </thead>
+          <tbody>
+            {indexes.map((item) => (
+              <tr key={item._id}>
+                <td>{item._id}</td>
+                <td>{item.index}</td>
+                <td>{new Date(item.date).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

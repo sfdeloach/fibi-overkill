@@ -23,22 +23,31 @@ const pool = new pg.Pool({
   user: postgresUser,
   database: postgresDatabase,
   password: postgresPassword,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+pool.on("error", (err, client) => {
+  console.error("Unexpected error on idle Postgres client", err);
+  process.exit(-1);
 });
 
 // create tables if not exist
-const createTableText = `
-CREATE TABLE IF NOT EXISTS indexes (
-  _id SERIAL PRIMARY KEY,
-  index INT,
-  date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-`;
+const initPostgres = async () => {
+  const createTableText = `
+  CREATE TABLE IF NOT EXISTS indexes (
+    _id SERIAL PRIMARY KEY,
+    index INT,
+    date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  );`;
+  const result = await pool.query(createTableText);
+  console.log("Created indexes table if not exists:", result.command);
+};
+initPostgres().catch((err) => {
+  console.error("Error initializing Postgres:", err);
+});
 
-pool
-  .query(createTableText)
-  .query("INSERT INTO indexes (index) VALUES ($1)", [3]) // remove after testing
-  .catch((err) => console.error("Error occurred during pool query: ", err));
-
+// dummy Redis data
 const dummyRedisData = [
   { key: 0, value: 0 },
   { key: 8, value: 21 },
@@ -51,35 +60,55 @@ app.get("/", (req, res) => {
   res.send("Hello ExpressJS!");
 });
 
-app.get("/indexes", (req, res) => {
+app.get("/indexes", async (req, res) => {
   const queryText = "SELECT * FROM indexes;";
-  pool
-    .query(queryText)
-    .then((result) => {
-      res.json(result.rows);
-    })
-    .catch((err) => {
-      console.error("Error querying indexes", err);
-      res.status(500).send("Error retrieving indexes");
-    });
+  const result = await pool.query(queryText);
+  console.log("Indexes retrieved:", JSON.stringify(result.rows));
+  res.json(result.rows);
 });
 
 app.get("/values", (req, res) => {
   res.json(dummyRedisData);
 });
 
-app.post("/index", (req, res) => {
-  setTimeout(() => {
-    dummyPostgresData.push({
-      index: req.body.index,
-      date: new Date().toISOString(),
-    });
-    dummyRedisData.push({ key: req.body.index, value: -1 }); // placeholder value
-    res.send("OK");
-  }, 3000); // simulate processing delay
+app.post("/index", async (req, res) => {
+  // insert into Postgres
+  const insertText = "INSERT INTO indexes (index) VALUES ($1);";
+  const values = [req.body.index];
+  const insertResult = await pool.query(insertText, values);
+  console.log(
+    "Inserted index:",
+    insertResult.command,
+    ", rows affected:",
+    insertResult.rowCount
+  );
+
+  // TODO: replace with actual Redis insertion logic
+
+  res.send("OK");
 });
 
 // start the server
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`API listening on port ${port}`);
 });
+
+// graceful shutdown
+const shutdown = async () => {
+  console.log("Shutting down API server...");
+
+  // close Postgres pool
+  await pool.end();
+  console.log("Postgres pool has ended.");
+
+  // TODO: close Redis client if implemented
+
+  // close the server
+  server.close(() => {
+    console.log("API server closed.");
+    process.exit(0);
+  });
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
