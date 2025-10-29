@@ -108,3 +108,33 @@ button {
 button:hover {
   background-color: #0056b3;
 }
+
+table {
+  width: 80%;
+  border-collapse: collapse;
+}
+
+tr {
+  border-bottom: 1px solid #ccc;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+td,
+th {
+  padding: 0.1rem;
+  text-align: center;
+  min-width: 3rem;
+}
+
+.no-data {
+  border-bottom: none;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.no-data td {
+  padding: 1rem;
+  color: #ccc;
+}
