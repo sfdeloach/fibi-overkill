@@ -86,13 +86,27 @@ function Home() {
       <div className="box">
         <h2>Calculated Values</h2>
         <h3>Redis Data</h3>
-        <ul>
-          {values.map((item) => (
-            <li key={item.key}>
-              For index {item.key}, calculated value is {item.value}
-            </li>
-          ))}
-        </ul>
+        <table>
+          <thead>
+            <tr>
+              <th>Index (n)</th>
+              <th>Fibonacci f(n)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {values.length === 0 && (
+              <tr className="no-data">
+                <td colSpan={3}>no data to display</td>
+              </tr>
+            )}
+            {values.map((item) => (
+              <tr key={item._id}>
+                <td>{item.key}</td>
+                <td>{item.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <div className="box">
         <h2>Index History</h2>

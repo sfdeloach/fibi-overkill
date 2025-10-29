@@ -6,6 +6,8 @@ const postgresPort = env.POSTGRES_PORT;
 const postgresUser = env.POSTGRES_USER;
 const postgresDatabase = env.POSTGRES_DATABASE;
 const postgresPassword = env.POSTGRES_PASSWORD;
+const redisHost = env.REDIS_HOST;
+const redisPort = env.REDIS_PORT;
 
 // express setup
 const express = require("express");
@@ -32,18 +34,6 @@ postgresPool.on("error", (err, client) => {
   process.exit(-1);
 });
 
-// redis client setup
-const { connectRedis } = require("./redis");
-let redisPool;
-(async () => {
-  try {
-    redisPool = await connectRedis();
-  } catch (err) {
-    console.error("Failed to connect to Redis:", err);
-    process.exit(1);
-  }
-})();
-
 // create tables if not exist
 const initPostgres = async () => {
   const createTableText = `
@@ -58,18 +48,19 @@ initPostgres().catch((err) => {
   console.error("Error initializing Postgres:", err);
 });
 
-// dummy Redis data
-const dummyRedisData = [
-  { key: 0, value: 0 },
-  { key: 8, value: 21 },
-  { key: 9, value: 34 },
-  { key: 10, value: 55 },
-];
+// redis client and publisher setup
+const { createClient } = require("redis");
+const redisClient = createClient({ url: `redis://${redisHost}:${redisPort}` });
+redisClient.on("error", (err) => {
+  console.error("Error initializing Posgres:", err);
+});
 
 // route handlers
 app.get("/", (req, res) => {
   res.send(
-    '<h1 style="font-family: monospace; width: 100vw; text-align: center; padding-top: 4rem">Who\'s ready to kill some CPU cycles?<h1>'
+    "<h1 style=" +
+      '"font-family: monospace; width: 100vw; text-align: center; padding-top: 4rem">' +
+      "Who's ready to kill some CPU cycles?<h1>"
   );
 });
 
@@ -81,7 +72,11 @@ app.get("/indexes", async (req, res) => {
 });
 
 app.get("/values", (req, res) => {
-  res.json(dummyRedisData);
+  // TODO: return all data from Redis
+  res.json([
+    //{ key: 0, value: 0 },
+    //{ key: 1, value: 1 },
+  ]);
 });
 
 app.post("/index", async (req, res) => {
@@ -90,12 +85,12 @@ app.post("/index", async (req, res) => {
   const values = [req.body.index];
   const insertResult = await postgresPool.query(insertText, values);
 
-  // insert into a Redis sorted set, TODO: CONTINUE IMPLEMENTATION
-  try {
-    const added = await redisPool.zAdd("zSet", [{ score: 12, value: "128" }]);
-  } catch (err) {
-    console.error("Error adding index into Redis: ", err);
-  }
+  // insert dummy data into Redis
+  // TODO: what data type to use? how to return all data?
+  const insertSet0 = await redisClient.set("0", "0");
+  const insertSet1 = await redisClient.set("1", "1");
+  const insertSet2 = await redisClient.set("2", "3");
+  const insertSet3 = await redisClient.set("3", "5");
 
   res.json(insertResult.rows);
 });
