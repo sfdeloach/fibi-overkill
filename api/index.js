@@ -1,13 +1,5 @@
 // environment variables
-const env = require("./env");
-const apiPort = env.API_PORT;
-const postgresHost = env.POSTGRES_HOST;
-const postgresPort = env.POSTGRES_PORT;
-const postgresUser = env.POSTGRES_USER;
-const postgresDatabase = env.POSTGRES_DATABASE;
-const postgresPassword = env.POSTGRES_PASSWORD;
-const redisHost = env.REDIS_HOST;
-const redisPort = env.REDIS_PORT;
+const env = require("../environment.js");
 
 // express setup
 const express = require("express");
@@ -20,11 +12,11 @@ app.use(bodyParser.json());
 // postgres client setup
 const pg = require("pg");
 const postgresPool = new pg.Pool({
-  host: postgresHost,
-  port: postgresPort,
-  user: postgresUser,
-  database: postgresDatabase,
-  password: postgresPassword,
+  host: env.POSTGRES_HOST,
+  port: env.POSTGRES_PORT,
+  user: env.POSTGRES_USER,
+  database: env.POSTGRES_DATABASE,
+  password: env.POSTGRES_PASSWORD,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
@@ -50,7 +42,9 @@ initPostgres().catch((err) => {
 
 // redis client and publisher setup
 const { createClient } = require("redis");
-const redisClient = createClient({ url: `redis://${redisHost}:${redisPort}` });
+const redisClient = createClient({
+  url: `redis://${env.REDIS_HOST}:${env.REDIS_PORT}`,
+});
 redisClient.on("error", (err) => {
   console.error("Error initializing Posgres:", err);
 });
@@ -96,8 +90,8 @@ app.post("/index", async (req, res) => {
 });
 
 // start the server
-const server = app.listen(apiPort, () => {
-  console.log(`API listening on port ${apiPort}`);
+const server = app.listen(env.API_PORT, () => {
+  console.log(`API listening on port ${env.API_PORT}`);
 });
 
 // graceful shutdown

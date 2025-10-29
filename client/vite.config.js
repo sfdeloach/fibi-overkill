@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import env from "./env.js";
+import env from "../environment.js";
 
 // https://vite.dev/config/
 export default defineConfig({

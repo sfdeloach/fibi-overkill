@@ -1,5 +1,6 @@
 module.exports = {
   API_PORT: process.env.API_PORT,
+  CLIENT_PORT: process.env.CLIENT_PORT,
   POSTGRES_HOST: process.env.POSTGRES_HOST,
   POSTGRES_PORT: process.env.POSTGRES_PORT,
   POSTGRES_USER: process.env.POSTGRES_USER,
