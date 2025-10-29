@@ -40,7 +40,7 @@ function Home() {
           body: JSON.stringify({ index: parseInt(index) }),
         });
 
-        const result = await res.text();
+        await res.json();
 
         if (res.ok) {
           setIndex("0");
@@ -106,6 +106,11 @@ function Home() {
             </tr>
           </thead>
           <tbody>
+            {indexes.length === 0 && (
+              <tr className="no-data">
+                <td colSpan={3}>no data to display</td>
+              </tr>
+            )}
             {indexes.map((item) => (
               <tr key={item._id}>
                 <td>{item._id}</td>
