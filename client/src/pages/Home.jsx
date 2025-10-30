@@ -100,7 +100,7 @@ function Home() {
               </tr>
             )}
             {values.map((item) => (
-              <tr key={item._id}>
+              <tr key={item.key}>
                 <td>{item.key}</td>
                 <td>{item.value}</td>
               </tr>

@@ -1,6 +1,3 @@
-// environment variables
-const env = require("../environment.js");
-
 // express setup
 const express = require("express");
 const app = express();
@@ -12,11 +9,11 @@ app.use(bodyParser.json());
 // postgres client setup
 const pg = require("pg");
 const postgresPool = new pg.Pool({
-  host: env.POSTGRES_HOST,
-  port: env.POSTGRES_PORT,
-  user: env.POSTGRES_USER,
-  database: env.POSTGRES_DATABASE,
-  password: env.POSTGRES_PASSWORD,
+  host: process.env.POSTGRES_HOST,
+  port: process.env.POSTGRES_PORT,
+  user: process.env.POSTGRES_USER,
+  database: process.env.POSTGRES_DATABASE,
+  password: process.env.POSTGRES_PASSWORD,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
@@ -43,11 +40,18 @@ initPostgres().catch((err) => {
 // redis client and publisher setup
 const { createClient } = require("redis");
 const redisClient = createClient({
-  url: `redis://${env.REDIS_HOST}:${env.REDIS_PORT}`,
+  url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
 });
 redisClient.on("error", (err) => {
-  console.error("Error initializing Posgres:", err);
+  console.error("Error initializing Redis:", err);
 });
+(async () => {
+  try {
+    await redisClient.connect();
+  } catch (error) {
+    console.error("Error on Redis connection: ", error);
+  }
+})();
 
 // route handlers
 app.get("/", (req, res) => {
@@ -61,15 +65,19 @@ app.get("/", (req, res) => {
 app.get("/indexes", async (req, res) => {
   const queryText = "SELECT * FROM indexes;";
   const result = await postgresPool.query(queryText);
-  console.log("Indexes retrieved:", JSON.stringify(result.rows));
   res.json(result.rows);
 });
 
-app.get("/values", (req, res) => {
+app.get("/values", async (req, res) => {
   // TODO: return all data from Redis
+  const keys = await redisClient.keys("*");
+  const values = await redisClient.mGet(keys);
+  // TODO: create returnable array of objects
+  console.log(keys);
+  console.log(values);
   res.json([
-    //{ key: 0, value: 0 },
-    //{ key: 1, value: 1 },
+    // { key: 0, value: 0 },
+    // { key: 1, value: 1 },
   ]);
 });
 
@@ -81,17 +89,17 @@ app.post("/index", async (req, res) => {
 
   // insert dummy data into Redis
   // TODO: what data type to use? how to return all data?
-  const insertSet0 = await redisClient.set("0", "0");
-  const insertSet1 = await redisClient.set("1", "1");
-  const insertSet2 = await redisClient.set("2", "3");
-  const insertSet3 = await redisClient.set("3", "5");
+  const insertSet0 = await redisClient.set("0", 0);
+  const insertSet1 = await redisClient.set("1", 1);
+  const insertSet2 = await redisClient.set("2", 3);
+  const insertSet3 = await redisClient.set("3", 5);
 
   res.json(insertResult.rows);
 });
 
 // start the server
-const server = app.listen(env.API_PORT, () => {
-  console.log(`API listening on port ${env.API_PORT}`);
+const server = app.listen(process.env.API_PORT, () => {
+  console.log(`API listening on port ${process.env.API_PORT}`);
 });
 
 // graceful shutdown
