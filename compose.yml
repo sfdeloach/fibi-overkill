@@ -30,6 +30,8 @@ services:
     volumes:
       - /app/node_modules
       - ./client:/app
+    environment:
+      - CLIENT_PORT=${CLIENT_PORT}
 
   postgres:
     image: postgres:18.0-trixie

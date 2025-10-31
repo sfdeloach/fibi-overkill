@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
+import CacheHitIcon from "../icons/CacheHitIcon";
+import CacheMissIcon from "../icons/CacheMissIcon";
 
 function Home() {
   const [index, setIndex] = useState("0");
+  const [value, setValue] = useState({});
   const [indexes, setIndexes] = useState([]);
-  const [values, setValues] = useState([]);
 
   useEffect(() => {
     let ignore = false;
     async function fetchData() {
       const resIndexes = await fetch("/api/indexes");
       const dataIndexes = await resIndexes.json();
-      const resValues = await fetch("/api/values");
-      const dataValues = await resValues.json();
+      const resValue = await fetch("/api/values");
+      const dataValue = await resValue.json();
       if (!ignore) {
         setIndexes(dataIndexes);
-        setValues(dataValues);
+        setValue(dataValue);
       }
     }
     fetchData();
@@ -44,13 +46,13 @@ function Home() {
 
         if (res.ok) {
           setIndex("0");
-          // Refresh the indexes and values after submission
+          // Refresh the indexes and value after submission
           const resIndexes = await fetch("/api/indexes");
           const dataIndexes = await resIndexes.json();
           setIndexes(dataIndexes);
-          const resValues = await fetch("/api/values");
-          const dataValues = await resValues.json();
-          setValues(dataValues);
+          const resValue = await fetch("/api/values");
+          const dataValue = await resValue.json();
+          setValue(dataValue);
         } else {
           console.error("Failed to submit index");
         }
@@ -84,29 +86,22 @@ function Home() {
         <button type="submit">Submit</button>
       </form>
       <div className="box">
-        <h2>Calculated Values</h2>
+        <h2>Calculated Value</h2>
         <h3>Redis Data</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Index (n)</th>
-              <th>Fibonacci f(n)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {values.length === 0 && (
-              <tr className="no-data">
-                <td colSpan={3}>no data to display</td>
-              </tr>
-            )}
-            {values.map((item) => (
-              <tr key={item.key}>
-                <td>{item.key}</td>
-                <td>{item.value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="redis-display">
+          {Object.keys(value).length !== 0 ? (
+            <>
+              <p className="results">
+                <em>f</em>({value.index}) = {value.result}
+              </p>
+              <p className="icon">
+                {value.isHit ? <CacheHitIcon /> : <CacheMissIcon />}
+              </p>
+            </>
+          ) : (
+            <p>Submit an index to get started</p>
+          )}
+        </div>
       </div>
       <div className="box">
         <h2>Index History</h2>

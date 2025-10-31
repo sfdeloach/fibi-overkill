@@ -109,6 +109,20 @@ button:hover {
   background-color: #0056b3;
 }
 
+.redis-display p {
+  font-family: "Courier New", Courier, monospace;
+  text-align: center;
+}
+
+.redis-display p.results {
+  font-size: 2rem;
+  font-weight: bolder;
+}
+
+.redis-display p.icon {
+  margin-top: 1rem;
+}
+
 table {
   width: 80%;
   border-collapse: collapse;

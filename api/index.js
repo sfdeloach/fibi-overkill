@@ -6,7 +6,9 @@ const app = express();
 const bodyParser = require("body-parser");
 app.use(bodyParser.json());
 
-// postgres client setup
+////
+// postgres database setup
+////
 const pg = require("pg");
 const postgresPool = new pg.Pool({
   host: process.env.POSTGRES_HOST,
@@ -23,7 +25,7 @@ postgresPool.on("error", (err, client) => {
   process.exit(-1);
 });
 
-// create tables if not exist
+// create table if not exist
 const initPostgres = async () => {
   const createTableText = `
   CREATE TABLE IF NOT EXISTS indexes (
@@ -37,7 +39,9 @@ initPostgres().catch((err) => {
   console.error("Error initializing Postgres:", err);
 });
 
-// redis client and publisher setup
+////
+// redis setup
+////
 const { createClient } = require("redis");
 const redisClient = createClient({
   url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
@@ -53,7 +57,11 @@ redisClient.on("error", (err) => {
   }
 })();
 
+// redis publisher
+
+////
 // route handlers
+////
 app.get("/", (req, res) => {
   res.send(
     "<h1 style=" +
@@ -71,14 +79,12 @@ app.get("/indexes", async (req, res) => {
 app.get("/values", async (req, res) => {
   // TODO: return all data from Redis
   const keys = await redisClient.keys("*");
-  const values = await redisClient.mGet(keys);
-  // TODO: create returnable array of objects
   console.log(keys);
+  const values = keys.length === 0 ? [] : await redisClient.mGet(keys);
   console.log(values);
-  res.json([
-    // { key: 0, value: 0 },
-    // { key: 1, value: 1 },
-  ]);
+  // TODO: create returnable object
+  res.json({ isHit: true, index: 0, result: 0 });
+  // res.json({});
 });
 
 app.post("/index", async (req, res) => {
@@ -97,12 +103,16 @@ app.post("/index", async (req, res) => {
   res.json(insertResult.rows);
 });
 
+////
 // start the server
+////
 const server = app.listen(process.env.API_PORT, () => {
   console.log(`API listening on port ${process.env.API_PORT}`);
 });
 
+////
 // graceful shutdown
+////
 const shutdown = async () => {
   console.log("Shutting down API server...");
 
