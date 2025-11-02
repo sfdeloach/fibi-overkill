@@ -122,6 +122,11 @@ button:hover {
   margin-top: 1rem;
 }
 
+.redis-display p.no-data {
+  font-family: 'Courier New', Courier, monospace;
+  color: #ccc;
+}
+
 table {
   width: 80%;
   border-collapse: collapse;

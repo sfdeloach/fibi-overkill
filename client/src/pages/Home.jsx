@@ -97,7 +97,7 @@ function Home() {
               </p>
             </>
           ) : (
-            <p>(submit an index to get started)</p>
+            <p className="no-data">submit an index to get started</p>
           )}
         </div>
       </div>
@@ -118,13 +118,15 @@ function Home() {
                 <td colSpan={3}>no data to display</td>
               </tr>
             )}
-            {indexes.map((item) => (
-              <tr key={item._id}>
-                <td>{item._id}</td>
-                <td>{item.index}</td>
-                <td>{new Date(item.date).toLocaleString()}</td>
-              </tr>
-            ))}
+            {indexes
+              .sort((a, b) => b._id - a._id)
+              .map((item) => (
+                <tr key={item._id}>
+                  <td>{item._id}</td>
+                  <td>{item.index}</td>
+                  <td>{new Date(item.date).toLocaleString()}</td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
