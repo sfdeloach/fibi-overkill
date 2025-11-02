@@ -12,11 +12,8 @@ function Home() {
     async function fetchData() {
       const resIndexes = await fetch("/api/indexes");
       const dataIndexes = await resIndexes.json();
-      const resValue = await fetch("/api/values");
-      const dataValue = await resValue.json();
       if (!ignore) {
         setIndexes(dataIndexes);
-        setValue(dataValue);
       }
     }
     fetchData();
@@ -34,7 +31,7 @@ function Home() {
 
     if (index !== "") {
       try {
-        const res = await fetch("/api/index", {
+        const res = await fetch("/api/calculate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -42,7 +39,7 @@ function Home() {
           body: JSON.stringify({ index: parseInt(index) }),
         });
 
-        await res.json();
+        const postResponse = await res.json();
 
         if (res.ok) {
           setIndex("0");
@@ -50,9 +47,10 @@ function Home() {
           const resIndexes = await fetch("/api/indexes");
           const dataIndexes = await resIndexes.json();
           setIndexes(dataIndexes);
-          const resValue = await fetch("/api/values");
+
+          const resValue = await fetch(`/api/value/${index}`);
           const dataValue = await resValue.json();
-          setValue(dataValue);
+          setValue({ ...postResponse, ...dataValue });
         } else {
           console.error("Failed to submit index");
         }
@@ -92,14 +90,14 @@ function Home() {
           {Object.keys(value).length !== 0 ? (
             <>
               <p className="results">
-                <em>f</em>({value.index}) = {value.result}
+                &#119891; ({value.index}) = {value.result}
               </p>
               <p className="icon">
                 {value.isHit ? <CacheHitIcon /> : <CacheMissIcon />}
               </p>
             </>
           ) : (
-            <p>Submit an index to get started</p>
+            <p>(submit an index to get started)</p>
           )}
         </div>
       </div>

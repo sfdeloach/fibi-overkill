@@ -110,13 +110,12 @@ button:hover {
 }
 
 .redis-display p {
-  font-family: "Courier New", Courier, monospace;
+  font-family: Cambria, Cochin, Georgia, Times, "Times New Roman", serif;
   text-align: center;
 }
 
 .redis-display p.results {
   font-size: 2rem;
-  font-weight: bolder;
 }
 
 .redis-display p.icon {

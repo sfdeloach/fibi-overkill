@@ -1,3 +1,12 @@
+// TODO: move to a worker service
+function fibonacci(index) {
+  if (index < 2) {
+    return index;
+  } else {
+    return fibonacci(index - 1) + fibonacci(index - 2);
+  }
+}
+
 // express setup
 const express = require("express");
 const app = express();
@@ -71,36 +80,38 @@ app.get("/", (req, res) => {
 });
 
 app.get("/indexes", async (req, res) => {
-  const queryText = "SELECT * FROM indexes;";
-  const result = await postgresPool.query(queryText);
+  const result = await postgresPool.query("SELECT * FROM indexes;");
   res.json(result.rows);
 });
 
-app.get("/values", async (req, res) => {
-  // TODO: return all data from Redis
-  const keys = await redisClient.keys("*");
-  console.log(keys);
-  const values = keys.length === 0 ? [] : await redisClient.mGet(keys);
-  console.log(values);
-  // TODO: create returnable object
-  res.json({ isHit: true, index: 0, result: 0 });
-  // res.json({});
+app.get("/value/:index", async (req, res) => {
+  const result = await redisClient.get(req.params.index);
+  res.json({ index: req.params.index, result });
 });
 
-app.post("/index", async (req, res) => {
+app.post("/calculate", async (req, res) => {
   // insert into Postgres
   const insertText = "INSERT INTO indexes (index) VALUES ($1) RETURNING _id;";
   const values = [req.body.index];
   const insertResult = await postgresPool.query(insertText, values);
 
-  // insert dummy data into Redis
-  // TODO: what data type to use? how to return all data?
-  const insertSet0 = await redisClient.set("0", 0);
-  const insertSet1 = await redisClient.set("1", 1);
-  const insertSet2 = await redisClient.set("2", 3);
-  const insertSet3 = await redisClient.set("3", 5);
+  // attempt to find value in Redis cache
+  const indexString = req.body.index.toString();
+  const getValue = await redisClient.get(indexString);
 
-  res.json(insertResult.rows);
+  if (getValue === null) {
+    // cache miss, calculate the value
+    try {
+      await redisClient.set(indexString, fibonacci(req.body.index));
+    } catch (err) {
+      console.error("Error setting Redis key-value: ", err);
+    } finally {
+      res.json({ isHit: false });
+    }
+  } else {
+    // cache hit
+    res.json({ isHit: true });
+  }
 });
 
 ////
