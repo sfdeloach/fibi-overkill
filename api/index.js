@@ -1,12 +1,3 @@
-// TODO: move to a worker service
-function fibonacci(index) {
-  if (index < 2) {
-    return index;
-  } else {
-    return fibonacci(index - 1) + fibonacci(index - 2);
-  }
-}
-
 // express setup
 const express = require("express");
 const app = express();
@@ -19,6 +10,7 @@ app.use(bodyParser.json());
 // postgres database setup
 ////
 const pg = require("pg");
+
 const postgresPool = new pg.Pool({
   host: process.env.POSTGRES_HOST,
   port: process.env.POSTGRES_PORT,
@@ -29,6 +21,7 @@ const postgresPool = new pg.Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
+
 postgresPool.on("error", (err, client) => {
   console.error("Unexpected error on idle Postgres client:", err);
   process.exit(-1);
@@ -42,8 +35,10 @@ const initPostgres = async () => {
     index INT,
     date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
   );`;
+
   const result = await postgresPool.query(createTableText);
 };
+
 initPostgres().catch((err) => {
   console.error("Error initializing Postgres:", err);
 });
@@ -52,21 +47,26 @@ initPostgres().catch((err) => {
 // redis setup
 ////
 const { createClient } = require("redis");
+
 const redisClient = createClient({
   url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
 });
-redisClient.on("error", (err) => {
-  console.error("Error initializing Redis:", err);
-});
-(async () => {
+
+redisClient.on("error", (err) => console.error("api client:", err));
+
+const redisPublisher = redisClient.duplicate();
+redisPublisher.on("error", (err) => console.error("api publisher:", err));
+
+const redisConnect = async () => {
   try {
     await redisClient.connect();
+    await redisPublisher.connect();
   } catch (error) {
     console.error("Error on Redis connection: ", error);
   }
-})();
+};
 
-// redis publisher
+redisConnect();
 
 ////
 // route handlers
@@ -80,7 +80,9 @@ app.get("/", (req, res) => {
 });
 
 app.get("/indexes", async (req, res) => {
-  const result = await postgresPool.query("SELECT * FROM indexes;");
+  const result = await postgresPool.query(
+    "SELECT * FROM indexes ORDER BY _id DESC;"
+  );
   res.json(result.rows);
 });
 
@@ -100,18 +102,11 @@ app.post("/calculate", async (req, res) => {
   const getValue = await redisClient.get(indexString);
 
   if (getValue === null) {
-    // cache miss, calculate the value
-    try {
-      await redisClient.set(indexString, fibonacci(req.body.index));
-    } catch (err) {
-      console.error("Error setting Redis key-value: ", err);
-    } finally {
-      res.json({ isHit: false });
-    }
-  } else {
-    // cache hit
-    res.json({ isHit: true });
+    // cache miss, publish message to worker
+    await redisPublisher.publish("status:assignment", indexString);
   }
+
+  res.json({ index: req.body.index, result: getValue });
 });
 
 ////
@@ -131,7 +126,9 @@ const shutdown = async () => {
   await postgresPool.end();
   console.log("Postgres pool is closed.");
 
-  // TODO: close Redis client if implemented
+  // close Redis clients
+  await redisClient.quit();
+  await redisPublisher.quit();
 
   // close the server
   server.close(() => {

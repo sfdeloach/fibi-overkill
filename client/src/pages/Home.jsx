@@ -43,14 +43,14 @@ function Home() {
 
         if (res.ok) {
           setIndex("0");
-          // Refresh the indexes and value after submission
+
+          // Refresh the "index history" box
           const resIndexes = await fetch("/api/indexes");
           const dataIndexes = await resIndexes.json();
           setIndexes(dataIndexes);
 
-          const resValue = await fetch(`/api/value/${index}`);
-          const dataValue = await resValue.json();
-          setValue({ ...postResponse, ...dataValue });
+          // Refresh the "calculated value" box
+          setValue(postResponse);
         } else {
           console.error("Failed to submit index");
         }
@@ -90,10 +90,10 @@ function Home() {
           {Object.keys(value).length !== 0 ? (
             <>
               <p className="results">
-                &#119891; ({value.index}) = {value.result}
+                &#119891; ({value.index}) = {value.result || "?"}
               </p>
               <p className="icon">
-                {value.isHit ? <CacheHitIcon /> : <CacheMissIcon />}
+                {value.result ? <CacheHitIcon /> : <CacheMissIcon />}
               </p>
             </>
           ) : (
@@ -118,15 +118,13 @@ function Home() {
                 <td colSpan={3}>no data to display</td>
               </tr>
             )}
-            {indexes
-              .sort((a, b) => b._id - a._id)
-              .map((item) => (
-                <tr key={item._id}>
-                  <td>{item._id}</td>
-                  <td>{item.index}</td>
-                  <td>{new Date(item.date).toLocaleString()}</td>
-                </tr>
-              ))}
+            {indexes.map((item) => (
+              <tr key={item._id}>
+                <td>{item._id}</td>
+                <td>{item.index}</td>
+                <td>{new Date(item.date).toLocaleString()}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
