@@ -1,4 +1,6 @@
-// express setup
+///////////////////
+// express setup //
+///////////////////
 const express = require("express");
 const app = express();
 
@@ -6,9 +8,9 @@ const app = express();
 const bodyParser = require("body-parser");
 app.use(bodyParser.json());
 
-////
-// postgres database setup
-////
+/////////////////////////////
+// postgres database setup //
+/////////////////////////////
 const pg = require("pg");
 
 const postgresPool = new pg.Pool({
@@ -33,6 +35,7 @@ const initPostgres = async () => {
   CREATE TABLE IF NOT EXISTS indexes (
     _id SERIAL PRIMARY KEY,
     index INT,
+    hit BOOLEAN,
     date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
   );`;
 
@@ -43,24 +46,38 @@ initPostgres().catch((err) => {
   console.error("Error initializing Postgres:", err);
 });
 
-////
-// redis setup
-////
+/////////////////
+// redis setup //
+/////////////////
 const { createClient } = require("redis");
 
+// client to get values from database
 const redisClient = createClient({
   url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
 });
 
 redisClient.on("error", (err) => console.error("api client:", err));
 
+// publisher to broadcast messages to worker
 const redisPublisher = redisClient.duplicate();
 redisPublisher.on("error", (err) => console.error("api publisher:", err));
 
+// subscriber to key-event notifications
+const redisSubscriber = redisClient.duplicate();
+redisSubscriber.on("error", (err) => console.error("api subscriber:", err));
+
+const listener = async (message, channel) => {
+  console.log(`received message "${message}" on channel ${channel}`);
+  // TODO: Is this the place to setup a web socket? Send update to the web client.
+};
+
+// connect all three Redis clients
 const redisConnect = async () => {
   try {
     await redisClient.connect();
     await redisPublisher.connect();
+    await redisSubscriber.connect();
+    await redisSubscriber.subscribe("__keyevent@0__:set", listener);
   } catch (error) {
     console.error("Error on Redis connection: ", error);
   }
@@ -68,9 +85,9 @@ const redisConnect = async () => {
 
 redisConnect();
 
-////
-// route handlers
-////
+////////////////////
+// route handlers //
+////////////////////
 app.get("/", (req, res) => {
   res.send(
     "<h1 style=" +
@@ -92,33 +109,37 @@ app.get("/value/:index", async (req, res) => {
 });
 
 app.post("/calculate", async (req, res) => {
-  // insert into Postgres
-  const insertText = "INSERT INTO indexes (index) VALUES ($1) RETURNING _id;";
-  const values = [req.body.index];
-  const insertResult = await postgresPool.query(insertText, values);
-
   // attempt to find value in Redis cache
-  const indexString = req.body.index.toString();
-  const getValue = await redisClient.get(indexString);
+  const getValue = await redisClient.get(req.body.index.toString());
+  const isHit = getValue !== null;
 
-  if (getValue === null) {
-    // cache miss, publish message to worker
-    await redisPublisher.publish("status:assignment", indexString);
+  // insert into Postgres
+  const insertText =
+    "INSERT INTO indexes (index, hit) VALUES ($1, $2) RETURNING _id;";
+  const values = [req.body.index, isHit];
+  await postgresPool.query(insertText, values);
+
+  if (!isHit) {
+    // cache miss, broadcast (publish) message to worker
+    await redisPublisher.publish(
+      "status:assignment",
+      req.body.index.toString()
+    );
   }
 
   res.json({ index: req.body.index, result: getValue });
 });
 
-////
-// start the server
-////
+//////////////////////
+// start the server //
+//////////////////////
 const server = app.listen(process.env.API_PORT, () => {
   console.log(`API listening on port ${process.env.API_PORT}`);
 });
 
-////
-// graceful shutdown
-////
+///////////////////////
+// graceful shutdown //
+///////////////////////
 const shutdown = async () => {
   console.log("Shutting down API server...");
 
@@ -131,7 +152,7 @@ const shutdown = async () => {
   await redisPublisher.quit();
 
   // close the server
-  server.close(() => {
+  app.close(() => {
     console.log("API server closed.");
     process.exit(0);
   });

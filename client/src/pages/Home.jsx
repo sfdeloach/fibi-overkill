@@ -3,8 +3,8 @@ import CacheHitIcon from "../icons/CacheHitIcon";
 import CacheMissIcon from "../icons/CacheMissIcon";
 
 function Home() {
-  const [index, setIndex] = useState("0");
-  const [value, setValue] = useState({});
+  const [index, setIndex] = useState("0"); // <String>
+  const [value, setValue] = useState({}); // { index: <Number>, result: <Number> || null }
   const [indexes, setIndexes] = useState([]);
 
   useEffect(() => {
@@ -39,6 +39,7 @@ function Home() {
           body: JSON.stringify({ index: parseInt(index) }),
         });
 
+        // { index: <Number>, result: <Number> || null }
         const postResponse = await res.json();
 
         if (res.ok) {
@@ -55,7 +56,7 @@ function Home() {
           console.error("Failed to submit index");
         }
       } catch (error) {
-        console.error("Error submitting index:", error);
+        console.error("POST request (fetch):", error);
       }
     } else {
       console.error("Index cannot be empty");
@@ -90,7 +91,8 @@ function Home() {
           {Object.keys(value).length !== 0 ? (
             <>
               <p className="results">
-                &#119891; ({value.index}) = {value.result || "?"}
+                &#119891; ({value.index}) ={" "}
+                {Number.parseInt(value.result).toLocaleString("en-US") || "?"}
               </p>
               <p className="icon">
                 {value.result ? <CacheHitIcon /> : <CacheMissIcon />}
@@ -109,6 +111,7 @@ function Home() {
             <tr>
               <th>ID</th>
               <th>Index</th>
+              <th>Hit?</th>
               <th>Date Submitted</th>
             </tr>
           </thead>
@@ -122,6 +125,13 @@ function Home() {
               <tr key={item._id}>
                 <td>{item._id}</td>
                 <td>{item.index}</td>
+                <td>
+                  {item.hit ? (
+                    <CacheHitIcon size="24px" />
+                  ) : (
+                    <CacheMissIcon size="24px" />
+                  )}
+                </td>
                 <td>{new Date(item.date).toLocaleString()}</td>
               </tr>
             ))}

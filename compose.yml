@@ -53,9 +53,9 @@ services:
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h ${POSTGRES_HOST} -p ${POSTGRES_PORT}"]
-      interval: 30s
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
     environment:
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PORT=${POSTGRES_PORT}
@@ -66,13 +66,16 @@ services:
       - pgdata:/var/lib/postgresql
 
   redis:
-    image: redis:8.2.2-bookworm
+    image: sfdeloach/fibi-overkill-redis-server:0.0.0
+    build:
+      context: ./redis
+      dockerfile: Dockerfile.dev
     restart: always
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
 
   proxy:
     image: sfdeloach/fibi-overkill-nginx:0.0.0
