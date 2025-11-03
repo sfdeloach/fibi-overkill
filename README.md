@@ -12,7 +12,4 @@ Configure Redis to publish [keyspace notifications](https://redis.io/docs/latest
 
 ## TODO
 
-- Create custom Redis image, configure to notify on "set" events
-- Implement API to monitor for "set" events
 - Web sockets?
-- New column in Postgres to track hits and misses

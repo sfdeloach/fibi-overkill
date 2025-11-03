@@ -1,11 +1,13 @@
 const { createClient } = require("redis");
 
+// client used to set key values in the redis database
 const client = createClient({
   url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
 });
 
 client.on("error", (err) => console.error("worker client:", err));
 
+// subscriber used to listen for messages from API server
 const subscriber = client.duplicate();
 subscriber.on("error", (err) => console.error("worker subscriber:", err));
 
@@ -19,6 +21,7 @@ const connect = async () => {
   }
 };
 
+// all of this overhead, just to get to this function!
 const fibonacci = (index) => {
   if (index < 2) {
     return index;
@@ -27,9 +30,11 @@ const fibonacci = (index) => {
   }
 };
 
+//
 const listener = async (message, channel) => {
-  console.log("received message:", message, "on channel:", channel);
+  console.log(`received message "${message}" on channel ${channel}`);
   const result = fibonacci(Number.parseInt(message));
+  console.log(`setting pair, key: ${message}, value:${result}`);
   await client.set(message, result);
 };
 
