@@ -1,14 +1,3 @@
-// environment variables
-const env = require("./env");
-const apiPort = env.API_PORT;
-const postgresHost = env.POSTGRES_HOST;
-const postgresPort = env.POSTGRES_PORT;
-const postgresUser = env.POSTGRES_USER;
-const postgresDatabase = env.POSTGRES_DATABASE;
-const postgresPassword = env.POSTGRES_PASSWORD;
-const redisHost = env.REDIS_HOST;
-const redisPort = env.REDIS_PORT;
-
 // express setup
 const express = require("express");
 const app = express();
@@ -17,24 +6,28 @@ const app = express();
 const bodyParser = require("body-parser");
 app.use(bodyParser.json());
 
-// postgres client setup
+////
+// postgres database setup
+////
 const pg = require("pg");
+
 const postgresPool = new pg.Pool({
-  host: postgresHost,
-  port: postgresPort,
-  user: postgresUser,
-  database: postgresDatabase,
-  password: postgresPassword,
+  host: process.env.POSTGRES_HOST,
+  port: process.env.POSTGRES_PORT,
+  user: process.env.POSTGRES_USER,
+  database: process.env.POSTGRES_DATABASE,
+  password: process.env.POSTGRES_PASSWORD,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
+
 postgresPool.on("error", (err, client) => {
   console.error("Unexpected error on idle Postgres client:", err);
   process.exit(-1);
 });
 
-// create tables if not exist
+// create table if not exist
 const initPostgres = async () => {
   const createTableText = `
   CREATE TABLE IF NOT EXISTS indexes (
@@ -42,20 +35,42 @@ const initPostgres = async () => {
     index INT,
     date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
   );`;
+
   const result = await postgresPool.query(createTableText);
 };
+
 initPostgres().catch((err) => {
   console.error("Error initializing Postgres:", err);
 });
 
-// redis client and publisher setup
+////
+// redis setup
+////
 const { createClient } = require("redis");
-const redisClient = createClient({ url: `redis://${redisHost}:${redisPort}` });
-redisClient.on("error", (err) => {
-  console.error("Error initializing Posgres:", err);
+
+const redisClient = createClient({
+  url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
 });
 
+redisClient.on("error", (err) => console.error("api client:", err));
+
+const redisPublisher = redisClient.duplicate();
+redisPublisher.on("error", (err) => console.error("api publisher:", err));
+
+const redisConnect = async () => {
+  try {
+    await redisClient.connect();
+    await redisPublisher.connect();
+  } catch (error) {
+    console.error("Error on Redis connection: ", error);
+  }
+};
+
+redisConnect();
+
+////
 // route handlers
+////
 app.get("/", (req, res) => {
   res.send(
     "<h1 style=" +
@@ -65,42 +80,45 @@ app.get("/", (req, res) => {
 });
 
 app.get("/indexes", async (req, res) => {
-  const queryText = "SELECT * FROM indexes;";
-  const result = await postgresPool.query(queryText);
-  console.log("Indexes retrieved:", JSON.stringify(result.rows));
+  const result = await postgresPool.query(
+    "SELECT * FROM indexes ORDER BY _id DESC;"
+  );
   res.json(result.rows);
 });
 
-app.get("/values", (req, res) => {
-  // TODO: return all data from Redis
-  res.json([
-    //{ key: 0, value: 0 },
-    //{ key: 1, value: 1 },
-  ]);
+app.get("/value/:index", async (req, res) => {
+  const result = await redisClient.get(req.params.index);
+  res.json({ index: req.params.index, result });
 });
 
-app.post("/index", async (req, res) => {
+app.post("/calculate", async (req, res) => {
   // insert into Postgres
   const insertText = "INSERT INTO indexes (index) VALUES ($1) RETURNING _id;";
   const values = [req.body.index];
   const insertResult = await postgresPool.query(insertText, values);
 
-  // insert dummy data into Redis
-  // TODO: what data type to use? how to return all data?
-  const insertSet0 = await redisClient.set("0", "0");
-  const insertSet1 = await redisClient.set("1", "1");
-  const insertSet2 = await redisClient.set("2", "3");
-  const insertSet3 = await redisClient.set("3", "5");
+  // attempt to find value in Redis cache
+  const indexString = req.body.index.toString();
+  const getValue = await redisClient.get(indexString);
 
-  res.json(insertResult.rows);
+  if (getValue === null) {
+    // cache miss, publish message to worker
+    await redisPublisher.publish("status:assignment", indexString);
+  }
+
+  res.json({ index: req.body.index, result: getValue });
 });
 
+////
 // start the server
-const server = app.listen(apiPort, () => {
-  console.log(`API listening on port ${apiPort}`);
+////
+const server = app.listen(process.env.API_PORT, () => {
+  console.log(`API listening on port ${process.env.API_PORT}`);
 });
 
+////
 // graceful shutdown
+////
 const shutdown = async () => {
   console.log("Shutting down API server...");
 
@@ -108,7 +126,9 @@ const shutdown = async () => {
   await postgresPool.end();
   console.log("Postgres pool is closed.");
 
-  // TODO: close Redis client if implemented
+  // close Redis clients
+  await redisClient.quit();
+  await redisPublisher.quit();
 
   // close the server
   server.close(() => {

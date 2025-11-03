@@ -109,6 +109,24 @@ button:hover {
   background-color: #0056b3;
 }
 
+.redis-display p {
+  font-family: Cambria, Cochin, Georgia, Times, "Times New Roman", serif;
+  text-align: center;
+}
+
+.redis-display p.results {
+  font-size: 2rem;
+}
+
+.redis-display p.icon {
+  margin-top: 1rem;
+}
+
+.redis-display p.no-data {
+  font-family: 'Courier New', Courier, monospace;
+  color: #ccc;
+}
+
 table {
   width: 80%;
   border-collapse: collapse;
