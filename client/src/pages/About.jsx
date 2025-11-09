@@ -33,9 +33,11 @@ function About() {
               Otherwise, publishes a message to a subscribed Nodejs worker to
               perform the calculation and caches the value in Redis
             </li>
+            <li>Update UI with data from Postgres</li>
             <li>
-              Update UI with data from Postgres ("values I have seen") and Redis
-              ("calculated values")
+              Update UI with cached value from Redis is available, otherwise
+              return a placeholder, which is updated via a Server Sent Event
+              (SSE)
             </li>
           </ul>
         </li>

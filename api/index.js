@@ -68,7 +68,7 @@ redisSubscriber.on("error", (err) => console.error("api subscriber:", err));
 
 const listener = async (message, channel) => {
   console.log(`received message "${message}" on channel ${channel}`);
-  // TODO: Is this the place to setup a web socket? Send update to the web client.
+  // TODO: Is this the place to dispatch SSE? Send event to the web client?
 };
 
 // connect all three Redis clients
@@ -110,22 +110,19 @@ app.get("/value/:index", async (req, res) => {
 
 app.post("/calculate", async (req, res) => {
   // attempt to find value in Redis cache
-  const getValue = await redisClient.get(req.body.index.toString());
+  const getValue = await redisClient.get(req.body.index);
   const isHit = getValue !== null;
-
-  // insert into Postgres
-  const insertText =
-    "INSERT INTO indexes (index, hit) VALUES ($1, $2) RETURNING _id;";
-  const values = [req.body.index, isHit];
-  await postgresPool.query(insertText, values);
 
   if (!isHit) {
     // cache miss, broadcast (publish) message to worker
-    await redisPublisher.publish(
-      "status:assignment",
-      req.body.index.toString()
-    );
+    await redisPublisher.publish("status:assignment", req.body.index);
   }
+
+  // insert into Postgres
+  const sqlStmt =
+    "INSERT INTO indexes (index, hit) VALUES ($1, $2) RETURNING _id;";
+  const values = [req.body.index, isHit];
+  await postgresPool.query(sqlStmt, values);
 
   res.json({ index: req.body.index, result: getValue });
 });

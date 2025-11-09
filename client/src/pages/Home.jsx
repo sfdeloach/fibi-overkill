@@ -36,7 +36,7 @@ function Home() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ index: parseInt(index) }),
+          body: JSON.stringify({ index }),
         });
 
         // { index: <Number>, result: <Number> || null }

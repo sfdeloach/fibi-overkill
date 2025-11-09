@@ -12,4 +12,4 @@ Configure Redis to publish [keyspace notifications](https://redis.io/docs/latest
 
 ## TODO
 
-- Web sockets?
+- Server Sent Event (SSE) implementation
