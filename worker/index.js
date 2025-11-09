@@ -21,6 +21,8 @@ const connect = async () => {
   }
 };
 
+connect();
+
 // all of this overhead, just to get to this function!
 const fibonacci = (index) => {
   if (index < 2) {
@@ -37,8 +39,6 @@ const listener = async (message, channel) => {
   console.log(`setting pair, key: ${message}, value:${result}`);
   await client.set(message, result);
 };
-
-connect();
 
 // graceful shutdown
 const shutdown = async () => {

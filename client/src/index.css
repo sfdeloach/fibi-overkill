@@ -41,6 +41,7 @@ span {
   justify-content: center;
   align-items: center;
   gap: 2rem;
+  width: 720px;
 }
 
 a {
@@ -123,7 +124,7 @@ button:hover {
 }
 
 .redis-display p.no-data {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
   color: #ccc;
 }
 
