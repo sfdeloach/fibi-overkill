@@ -8,7 +8,22 @@ function Home() {
   const [indexes, setIndexes] = useState([]);
 
   useEffect(() => {
+    const evtSource = new EventSource("/api/server-event");
+
+    // to keep the SSR connection alive
+    evtSource.addEventListener("ping", (event) => {
+      console.log(event.data);
+    });
+
+    // update value when message received
+    evtSource.onmessage = (event) => {
+      setValue((prevValue) => {
+        return { ...prevValue, result: Number.parseInt(event.data) };
+      });
+    };
+
     let ignore = false;
+
     async function fetchData() {
       const resIndexes = await fetch("/api/indexes");
       const dataIndexes = await resIndexes.json();
@@ -16,7 +31,9 @@ function Home() {
         setIndexes(dataIndexes);
       }
     }
+
     fetchData();
+
     return () => {
       ignore = true;
     };
@@ -25,6 +42,24 @@ function Home() {
   function handleChange(event) {
     setIndex(event.target.value);
   }
+
+  const handleReset = async (event) => {
+    try {
+      const res = await fetch("/api/reset", {
+        method: "DELETE",
+      });
+
+      const deleteResponse = await res.json();
+
+      if (res.ok) {
+        setIndex("0");
+        setValue({});
+        setIndexes([]);
+      }
+    } catch (error) {
+      console.error("DELETE request (fetch):", error);
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -51,6 +86,7 @@ function Home() {
           setIndexes(dataIndexes);
 
           // Refresh the "calculated value" box
+          console.log(postResponse);
           setValue(postResponse);
         } else {
           console.error("Failed to submit index");
@@ -83,6 +119,9 @@ function Home() {
           onChange={handleChange}
         />
         <button type="submit">Submit</button>
+        <button type="button" className="reset-btn" onClick={handleReset}>
+          Reset
+        </button>
       </form>
       <div className="box">
         <h2>Calculated Value</h2>
@@ -91,8 +130,12 @@ function Home() {
           {Object.keys(value).length !== 0 ? (
             <>
               <p className="results">
-                &#119891; ({value.index}) ={" "}
-                {Number.parseInt(value.result).toLocaleString("en-US") || "?"}
+                &#119891; ({value.index}){" = "}
+                {value.result ? (
+                  Number.parseInt(value.result).toLocaleString("en-US")
+                ) : (
+                  <span>🤓</span>
+                )}
               </p>
               <p className="icon">
                 {value.result ? <CacheHitIcon /> : <CacheMissIcon />}
@@ -118,7 +161,7 @@ function Home() {
           <tbody>
             {indexes.length === 0 && (
               <tr className="no-data">
-                <td colSpan={3}>no data to display</td>
+                <td colSpan={4}>no data to display</td>
               </tr>
             )}
             {indexes.map((item) => (

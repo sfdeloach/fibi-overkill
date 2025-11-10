@@ -1,3 +1,15 @@
+@keyframes rock {
+  0% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+  100% {
+    transform: rotate(-10deg);
+  }
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -110,13 +122,27 @@ button:hover {
   background-color: #0056b3;
 }
 
+button.reset-btn {
+  background-color: #bd2222;
+}
+
+button.reset-btn:hover {
+  background-color: #912020;
+}
+
 .redis-display p {
   font-family: Cambria, Cochin, Georgia, Times, "Times New Roman", serif;
   text-align: center;
 }
 
 .redis-display p.results {
+  display: flex;
   font-size: 2rem;
+}
+
+.redis-display p.results span {
+  padding: 0px 8px;
+  animation: rock 1.5s ease-in-out infinite;
 }
 
 .redis-display p.icon {

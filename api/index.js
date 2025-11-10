@@ -50,6 +50,8 @@ initPostgres().catch((err) => {
 // redis setup //
 /////////////////
 const { createClient } = require("redis");
+const EventEmitter = require("events");
+const emitter = new EventEmitter();
 
 // client to get values from database
 const redisClient = createClient({
@@ -68,7 +70,7 @@ redisSubscriber.on("error", (err) => console.error("api subscriber:", err));
 
 const listener = async (message, channel) => {
   console.log(`received message "${message}" on channel ${channel}`);
-  // TODO: Is this the place to dispatch SSE? Send event to the web client?
+  emitter.emit(channel, message);
 };
 
 // connect all three Redis clients
@@ -125,6 +127,45 @@ app.post("/calculate", async (req, res) => {
   await postgresPool.query(sqlStmt, values);
 
   res.json({ index: req.body.index, result: getValue });
+});
+
+app.delete("/reset", async (req, res) => {
+  // delete all rows in Postgres
+  const sqlStmt = "TRUNCATE TABLE indexes RESTART IDENTITY;";
+  await postgresPool.query(sqlStmt);
+
+  // remove all key-value pairs in Redis
+  await redisClient.flushAll();
+
+  res.json({});
+});
+
+app.get("/server-event", (req, res) => {
+  res.writeHead(200, {
+    "X-Accel-Buffering": "no",
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+
+  // keeps connection alive
+  const pingID = setInterval(() => {
+    const time = new Date();
+    res.write("event: ping\n");
+    res.write(`data: ${time.toISOString()}\n\n`);
+  }, 50000);
+
+  emitter.on("__keyevent@0__:set", (message) => {
+    setTimeout(() => {
+      res.write("event: message\n");
+      res.write(`data: ${message}\n\n`);
+    }, 1000);
+  });
+
+  req.on("close", () => {
+    clearInterval(pingID);
+    res.end();
+  });
 });
 
 //////////////////////
