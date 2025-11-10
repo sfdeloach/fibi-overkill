@@ -9,7 +9,3 @@ An "over the top" web application with more services than necessary to calculate
 ### Custom Redis Image
 
 Configure Redis to publish [keyspace notifications](https://redis.io/docs/latest/develop/pubsub/keyspace-notifications/)
-
-## TODO
-
-- Server Sent Event (SSE) implementation

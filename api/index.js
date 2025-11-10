@@ -64,13 +64,13 @@ redisClient.on("error", (err) => console.error("api client:", err));
 const redisPublisher = redisClient.duplicate();
 redisPublisher.on("error", (err) => console.error("api publisher:", err));
 
-// subscriber to key-event notifications
+// subscriber to keyspace notifications
 const redisSubscriber = redisClient.duplicate();
 redisSubscriber.on("error", (err) => console.error("api subscriber:", err));
 
-const listener = async (message, channel) => {
-  console.log(`received message "${message}" on channel ${channel}`);
-  emitter.emit(channel, message);
+const listener = async (key, channel) => {
+  const value = await redisClient.get(key);
+  emitter.emit(channel, value);
 };
 
 // connect all three Redis clients
@@ -126,7 +126,7 @@ app.post("/calculate", async (req, res) => {
   const values = [req.body.index, isHit];
   await postgresPool.query(sqlStmt, values);
 
-  res.json({ index: req.body.index, result: getValue });
+  res.json({ isHit, index: req.body.index, result: getValue });
 });
 
 app.delete("/reset", async (req, res) => {
@@ -155,11 +155,13 @@ app.get("/server-event", (req, res) => {
     res.write(`data: ${time.toISOString()}\n\n`);
   }, 50000);
 
-  emitter.on("__keyevent@0__:set", (message) => {
+  // timeout is required, otherwise the emitter provides the result too fast
+  // and the UI misses the final update displaying the value
+  emitter.on("__keyevent@0__:set", (value) => {
     setTimeout(() => {
       res.write("event: message\n");
-      res.write(`data: ${message}\n\n`);
-    }, 1000);
+      res.write(`data: ${value}\n\n`);
+    }, 2000);
   });
 
   req.on("close", () => {

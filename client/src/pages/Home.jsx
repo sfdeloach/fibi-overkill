@@ -4,10 +4,13 @@ import CacheMissIcon from "../icons/CacheMissIcon";
 
 function Home() {
   const [index, setIndex] = useState("0"); // <String>
-  const [value, setValue] = useState({}); // { index: <Number>, result: <Number> || null }
+  const [value, setValue] = useState({}); // { isHit: <Boolean>, index: <Number>, result: <Number> || null }
   const [indexes, setIndexes] = useState([]);
 
   useEffect(() => {
+    //
+    // server sent events (SSE) setup
+    //
     const evtSource = new EventSource("/api/server-event");
 
     // to keep the SSR connection alive
@@ -16,12 +19,15 @@ function Home() {
     });
 
     // update value when message received
-    evtSource.onmessage = (event) => {
+    evtSource.addEventListener("message", (event) => {
       setValue((prevValue) => {
         return { ...prevValue, result: Number.parseInt(event.data) };
       });
-    };
+    });
 
+    //
+    // initial data fetch
+    //
     let ignore = false;
 
     async function fetchData() {
@@ -74,7 +80,7 @@ function Home() {
           body: JSON.stringify({ index }),
         });
 
-        // { index: <Number>, result: <Number> || null }
+        // { isHit: <Boolean>, index: <Number>, result: <Number> || null }
         const postResponse = await res.json();
 
         if (res.ok) {
@@ -86,7 +92,6 @@ function Home() {
           setIndexes(dataIndexes);
 
           // Refresh the "calculated value" box
-          console.log(postResponse);
           setValue(postResponse);
         } else {
           console.error("Failed to submit index");
@@ -131,14 +136,14 @@ function Home() {
             <>
               <p className="results">
                 &#119891; ({value.index}){" = "}
-                {value.result ? (
+                {value.result !== null ? (
                   Number.parseInt(value.result).toLocaleString("en-US")
                 ) : (
                   <span>🤓</span>
                 )}
               </p>
               <p className="icon">
-                {value.result ? <CacheHitIcon /> : <CacheMissIcon />}
+                {value.isHit ? <CacheHitIcon /> : <CacheMissIcon />}
               </p>
             </>
           ) : (
