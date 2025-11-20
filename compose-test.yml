@@ -1,0 +1,92 @@
+services:
+  # api:
+  #   image: sfdeloach/fibi-overkill-api-server-test:0.0.0
+  #   build:
+  #     context: ./api
+  #     dockerfile: Dockerfile.test
+  #   volumes:
+  #     - /app/node_modules
+  #     - ./api:/app
+  #   environment:
+  #     - API_PORT=${API_PORT}
+  #     - POSTGRES_HOST=${POSTGRES_HOST}
+  #     - POSTGRES_PORT=${POSTGRES_PORT}
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - REDIS_HOST=${REDIS_HOST}
+  #     - REDIS_PORT=${REDIS_PORT}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+
+  worker:
+    image: sfdeloach/fibi-overkill-worker-test:0.0.0
+    build:
+      context: ./worker
+      dockerfile: Dockerfile.test
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # client:
+  #   image: sfdeloach/fibi-overkill-react-server:0.0.0
+  #   build:
+  #     context: ./client
+  #     dockerfile: Dockerfile.dev
+  #   volumes:
+  #     - /app/node_modules
+  #     - ./client:/app
+  #   environment:
+  #     - CLIENT_PORT=${CLIENT_PORT}
+
+  # postgres:
+  #   image: postgres:18.0-trixie
+  #   restart: always
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -h ${POSTGRES_HOST} -p ${POSTGRES_PORT}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   environment:
+  #     - POSTGRES_HOST=${POSTGRES_HOST}
+  #     - POSTGRES_PORT=${POSTGRES_PORT}
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql
+
+  redis:
+    image: sfdeloach/fibi-overkill-redis-server:0.0.0
+    build:
+      context: ./redis
+      dockerfile: Dockerfile
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # proxy:
+  #   image: sfdeloach/fibi-overkill-nginx:0.0.0
+  #   restart: always
+  #   build:
+  #     context: ./proxy
+  #     dockerfile: Dockerfile.dev
+  #   depends_on:
+  #     - client
+  #     - api
+  #   ports:
+  #     - "8080:80"
+# volumes:
+#   pgdata:

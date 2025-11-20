@@ -1,6 +1,6 @@
 services:
   api:
-    image: sfdeloach/fibi-overkill-api-server:0.0.0
+    image: sfdeloach/fibi-overkill-api-server-dev:0.0.0
     build:
       context: ./api
       dockerfile: Dockerfile.dev
@@ -23,7 +23,7 @@ services:
         condition: service_healthy
 
   worker:
-    image: sfdeloach/fibi-overkill-worker:0.0.0
+    image: sfdeloach/fibi-overkill-worker-dev:0.0.0
     build:
       context: ./worker
       dockerfile: Dockerfile.dev
@@ -69,7 +69,7 @@ services:
     image: sfdeloach/fibi-overkill-redis-server:0.0.0
     build:
       context: ./redis
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     restart: always
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
